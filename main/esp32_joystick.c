@@ -30,7 +30,7 @@
 
 #define SEND_PERIOD_MS        20   // 50 Hz
 
-// CHANGE THIS TO YOUR DRONE MAC
+// CHANGE THIS TO YOUR DRONE MAC ADDRESS
 uint8_t drone_mac[ESP_NOW_ETH_ALEN] = { 0x02, 0x00, 0x00, 0x00, 0x00, 0x01 };
 
 /* ===================== DATA ===================== */
@@ -45,6 +45,9 @@ typedef struct __attribute__((packed))
 /* ===================== ADC ===================== */
 
 static adc_oneshot_unit_handle_t adc_handle;
+float THROTTLE_ERROR = 0.f;
+float ROLL_ERROR = 0.f;
+float PITCH_ERROR = 0.f;
 
 /**
  * Initialize ADC for throttle, AUXILIARY FUNCTION FOR ERROR CHECKING(GPIO10)
@@ -108,7 +111,7 @@ void init_adc_all(void)
     ESP_LOGI(TAG, "ADC initialized for all channels");
 }
 
-static float read_throttle(void)
+float read_throttle(void)
 {
     int raw = 0;
     adc_oneshot_read(adc_handle, THROTTLE_ADC_CHANNEL, &raw);
@@ -125,7 +128,7 @@ static float read_throttle(void)
     return t;
 }
 
-static float read_roll(void)
+float read_roll(void)
 {
     int raw = 0;
     adc_oneshot_read(adc_handle, ROLL_ADC_CHANNEL, &raw);
@@ -142,7 +145,7 @@ static float read_roll(void)
     return r;
 }
 
-static float read_pitch(void)
+float read_pitch(void)
 {
     int raw = 0;
     adc_oneshot_read(adc_handle, PITCH_ADC_CHANNEL, &raw);
@@ -161,7 +164,6 @@ static float read_pitch(void)
 
 /* ===================== ESP-NOW ===================== */
 
-// ✅ CORRECT CALLBACK SIGNATURE (IDF 5.x)
 static void espnow_send_cb(const esp_now_send_info_t *tx_info, esp_now_send_status_t status)
 {
     ESP_LOGD(TAG, "Send status: %s", status == ESP_NOW_SEND_SUCCESS ? "OK" : "FAIL");
@@ -194,6 +196,35 @@ static void espnow_init(void)
     ESP_LOGI(TAG, "ESP-NOW initialized");
 }
 
+/**
+ * Calibrate ADC by averaging multiple readings to find the 
+ * error offsets for throttle, roll, and pitch. 
+ * This ensures that the joystick readings are centered around zero when at rest.
+ */
+static void calibrate_adc()
+{
+    for(int i=0; i<2000; i++){
+        THROTTLE_ERROR += read_throttle();
+        ROLL_ERROR += read_roll();
+        PITCH_ERROR += read_pitch();
+    }
+    THROTTLE_ERROR = THROTTLE_ERROR/ 2000.f;
+    ROLL_ERROR = ROLL_ERROR / 2000.f;
+    PITCH_ERROR = PITCH_ERROR / 2000.f;
+    return;
+}
+
+/**
+ * Clamp small joystick values to zero to prevent drift due to noise.
+ * This creates a deadzone around the center position of the joystick.
+ */
+float clamp(float value){
+    if(value > -0.1f && value < 0.1f){
+        return 0.f;        
+    } 
+    else return value;
+}
+
 /* ===================== TASK ===================== */
 
 
@@ -206,13 +237,13 @@ static void espnow_send_data(void *arg)
 
     while (1)
     {
-        msg.throttle = read_throttle();
-        msg.roll  = read_roll();
-        msg.pitch = read_pitch();
-
+        msg.throttle = clamp(read_throttle() - THROTTLE_ERROR); 
+        msg.roll  = clamp(read_roll() - ROLL_ERROR);
+        msg.pitch = clamp(read_pitch() - PITCH_ERROR);
+        
         esp_now_send(drone_mac, (uint8_t *)&msg, sizeof(msg));
 
-        ESP_LOGI(TAG, "Throttle: %.2f Roll: %.2f Pitch: %.2f", msg.throttle, msg.roll, msg.pitch);
+        // ESP_LOGI(TAG, "Throttle: %.2f Roll: %.2f Pitch: %.2f", msg.throttle, msg.roll, msg.pitch);
 
         vTaskDelay(pdMS_TO_TICKS(SEND_PERIOD_MS));
     }
@@ -229,6 +260,11 @@ void app_main(void)
     espnow_init();
 
     xTaskCreate(
-        espnow_send_data,"espnow_send_data",4096,NULL,5,NULL
+        espnow_send_data,
+        "espnow_send_data",
+        4096,
+        NULL,
+        5,
+        NULL
     );
 }
