@@ -1,15 +1,15 @@
-#include "espnow_controller.h"
-#include "thumbstick_adc_controller.h"
-#include "button_gpio_controller.h"
+#include "espnow.h"
 
 typedef struct __attribute__((packed))
 {
     float throttle;
     float roll;
     float pitch;
+    float yaw;
 } message;
 
 #define SEND_PERIOD_MS 20 // 50 Hz
+calibration_state cs;
 
 // CHANGE THIS TO YOUR DRONE MAC ADDRESS
 uint8_t drone_mac[ESP_NOW_ETH_ALEN] = { 0x02, 0x00, 0x00, 0x00, 0x00, 0x01 };
@@ -22,8 +22,9 @@ static void espnow_send_cb(const esp_now_send_info_t *tx_info, esp_now_send_stat
 /**
  * Initialize ESP-NOW protocol for communication with drone
  */
-void espnow_init(void)
+void espnow_init(calibration_state *new_cs)
 {
+    cs = *new_cs;
     ESP_ERROR_CHECK(nvs_flash_init());
     ESP_ERROR_CHECK(esp_netif_init());
     ESP_ERROR_CHECK(esp_event_loop_create_default());
@@ -42,8 +43,8 @@ void espnow_init(void)
     peer.encrypt = false;
 
     ESP_ERROR_CHECK(esp_now_add_peer(&peer));
+    ESP_LOGI("", "ESP-NOW initialized");
 
-    // ESP_LOGI(TAG, "ESP-NOW initialized");
 }
 
 /**
@@ -67,9 +68,10 @@ void espnow_send_data(void *arg)
 
     while (1)
     {
-        msg.throttle = clamp(read_throttle() - THROTTLE_ERROR); 
-        msg.roll  = clamp(read_roll() - ROLL_ERROR);
-        msg.pitch = clamp(read_pitch() - PITCH_ERROR);
+        msg.throttle = clamp(read_throttle() - cs.throttle); 
+        msg.roll  = clamp(read_roll() - cs.roll);
+        msg.pitch = clamp(read_pitch() - cs.pitch);
+        msg.yaw = clamp(read_yaw() - cs.yaw);
         
         esp_now_send(drone_mac, (uint8_t *)&msg, sizeof(msg));
 

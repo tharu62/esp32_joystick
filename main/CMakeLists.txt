@@ -1,2 +1,2 @@
-idf_component_register(SRCS "esp32_joystick.c" "espnow_controller.c" "thumbstick_adc_controller.c" "button_gpio_controller.c"
-                        INCLUDE_DIRS ".")
+idf_component_register(SRCS "esp32_joystick.c" "espnow.c" "thumbstick.c" "buttons.c"
+                       INCLUDE_DIRS "C:/Users/Deshan/Documents/Code/ESP_idf/esp32_joystick/include")

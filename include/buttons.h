@@ -1,5 +1,7 @@
 #pragma once
 
+#include <stdint.h>
+
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "freertos/queue.h"
@@ -9,4 +11,8 @@
 
 #include "driver/gpio.h"
 
-void init_buttons_gpio_interrupts();
+#include "state.h"
+
+void init_buttons(void);
+
+void init_buttons_interrupts();

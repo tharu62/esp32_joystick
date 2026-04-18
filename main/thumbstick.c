@@ -1,4 +1,4 @@
-#include "thumbstick_adc_controller.h"
+#include "thumbstick.h"
 
 #define TAG "JOY_MASTER"
 
@@ -7,12 +7,10 @@
 #define THROTTLE_ADC_CHANNEL  ADC_CHANNEL_9   // GPIO10
 #define ROLL_ADC_CHANNEL      ADC_CHANNEL_1   // GPIO2
 #define PITCH_ADC_CHANNEL     ADC_CHANNEL_0   // GPIO1
+#define YAW_ADC_CHANNEL       ADC_CHANNEL_2   // ...
 #define ADC_MAX               4095.0f
 
 static adc_oneshot_unit_handle_t adc_handle;
-float THROTTLE_ERROR = 0.f;
-float ROLL_ERROR = 0.f;
-float PITCH_ERROR = 0.f;
 
 void adc_init_throttle(void)
 {
@@ -67,7 +65,7 @@ void init_adc_all(void)
         &chan_cfg
     ));
     
-    // ESP_LOGI(TAG, "ADC initialized for all channels");
+    ESP_LOGI(TAG, "ADC initialized for all channels");
 }
 
 float read_throttle(void)
@@ -108,29 +106,47 @@ float read_pitch(void)
 {
     int raw = 0;
     adc_oneshot_read(adc_handle, PITCH_ADC_CHANNEL, &raw);
-
     if (raw < 0) raw = 0;
     if (raw > 4095) raw = 4095;
-
     float p = raw / ADC_MAX;
-
     // Noise clamp
-    if (p < 0.02f)
+    if (p < 0.02f){
         p = 0.0f;
-
+    }
     return p;
 }
 
-void calibrate_adc()
+float read_yaw(void)
 {
-    for(int i=0; i<2000; i++){
-        THROTTLE_ERROR += read_throttle();
-        ROLL_ERROR += read_roll();
-        PITCH_ERROR += read_pitch();
+    int raw = 0;
+    adc_oneshot_read(adc_handle, YAW_ADC_CHANNEL, &raw);
+    if (raw < 0) raw = 0;
+    if (raw > 4095) raw = 4095;
+    float p = raw / ADC_MAX;
+    // Noise clamp
+    if (p < 0.02f){
+        p = 0.0f;
     }
-    THROTTLE_ERROR = THROTTLE_ERROR/ 2000.f;
-    ROLL_ERROR = ROLL_ERROR / 2000.f;
-    PITCH_ERROR = PITCH_ERROR / 2000.f;
+    return p;
+}
+
+void calibrate_adc(calibration_state *cs)
+{
+    cs->throttle = 0.f;
+    cs->roll = 0.f;
+    cs->pitch = 0.f;
+    cs->yaw = 0.f;
+
+    for(int i=0; i<2000; i++){
+        cs->throttle += read_throttle();
+        cs->roll += read_roll();
+        cs->pitch += read_pitch();
+        cs->yaw += read_yaw();
+    }
+    cs->throttle = cs->throttle/ 2000.f;
+    cs->roll = cs->roll / 2000.f;
+    cs->pitch = cs->pitch / 2000.f;
+    cs->yaw = cs->yaw / 2000.f;
     return;
 }
 

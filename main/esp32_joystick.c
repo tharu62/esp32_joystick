@@ -4,21 +4,24 @@
 #include "esp_log.h"
 #include "esp_err.h"
 
-#include "thumbstick_adc_controller.h"
-#include "espnow_controller.h"
-#include "button_gpio_controller.h"
+#include "state.h"
+#include "espnow.h"
+#include "buttons.h"
+#include "thumbstick.h"
 
 #define TAG "JOY_MASTER"
 
 void app_main(void)
 {
-    ESP_LOGI(TAG, "ESP32-S3 Joystick Master");
+    ESP_LOGI(TAG, "ESP32-S3 Joystick Master started");
+    
+    calibration_state cs;
 
-    // adc_init_throttle();
+    // adc_init_throttle(); // throttle only function used for testing only
     init_adc_all();
-    calibrate_adc();
-    espnow_init();
-    init_buttons_gpio_interrupts();
+    calibrate_adc(&cs);
+    espnow_init(&cs);
+    init_buttons_interrupts();
 
     xTaskCreate(
         espnow_send_data,

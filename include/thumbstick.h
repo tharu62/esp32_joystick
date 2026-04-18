@@ -9,6 +9,7 @@
 
 #include "esp_adc/adc_oneshot.h"
 #include "driver/gpio.h"
+#include "state.h"
 
 extern float THROTTLE_ERROR;
 extern float ROLL_ERROR;
@@ -30,9 +31,11 @@ float read_roll(void);
 
 float read_pitch(void);
 
+float read_yaw();
+
 /**
  * Calibrate ADC by averaging multiple readings to find the 
  * error offsets for throttle, roll, and pitch. 
  * This ensures that the joystick readings are centered around zero when at rest.
  */
-void calibrate_adc();
+void calibrate_adc(calibration_state *cs);

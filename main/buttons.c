@@ -1,38 +1,41 @@
-#include "button_gpio_controller.h"
-#include <stdint.h>
+#include "buttons.h"
 
 #define BUTTON_JOY_X GPIO_NUM_10
 #define BUTTON_JOY_Y GPIO_NUM_11
 #define BUTTON_JOY_A GPIO_NUM_12
 #define BUTTON_JOY_B GPIO_NUM_13
 
-volatile bool button_x_pressed = false;
-volatile bool button_y_pressed = false;
-volatile bool button_a_pressed = false;
-volatile bool button_b_pressed = false;
+buttons_state bs;
 
+void init_buttons(void)
+{
+    bs.button_a_pressed = false;
+    bs.button_b_pressed = false;
+    bs.button_x_pressed = false;
+    bs.button_y_pressed = false;
+}
 
 void IRAM_ATTR button_pressed(void *arg)
 {
     char button_id = (char)(uintptr_t)arg;
     switch (button_id) {
         case 'X':
-            button_x_pressed = true;
+            bs.button_x_pressed = true;
             break;
         case 'Y':
-            button_y_pressed = true;
+            bs.button_y_pressed = true;
             break;
         case 'A':
-            button_a_pressed = true;
+            bs.button_a_pressed = true;
             break;
         case 'B':
-            button_b_pressed = true;
+            bs.button_b_pressed = true;
             break;
     }
     return;
 }
 
-void init_buttons_gpio_interrupts()
+void init_buttons_interrupts()
 {
 
     gpio_set_direction(BUTTON_JOY_A, GPIO_MODE_INPUT);
