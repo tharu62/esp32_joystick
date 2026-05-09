@@ -1,6 +1,7 @@
 #pragma once
 
 #include <string.h>
+#include <math.h>
 
 #include "esp_log.h"
 #include "esp_err.h"
@@ -18,7 +19,7 @@
 /**
  * Initialize ESP-NOW protocol for communication with drone
  */
-void espnow_init(calibration_state *new_cs);
+void espnow_init();
 
 /**
  * Clamp small joystick values to zero to prevent drift due to noise.

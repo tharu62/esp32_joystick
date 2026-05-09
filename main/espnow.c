@@ -1,4 +1,7 @@
 #include "espnow.h"
+#include "freertos/FreeRTOS.h"
+
+#define TAG "ESPNOW"
 
 typedef struct __attribute__((packed))
 {
@@ -8,23 +11,22 @@ typedef struct __attribute__((packed))
     float yaw;
 } message;
 
-#define SEND_PERIOD_MS 20 // 50 Hz
-calibration_state cs;
+#define SEND_PERIOD_MS 50 // 20 Hz
+#define GAIN 2.0f 
 
-// CHANGE THIS TO YOUR DRONE MAC ADDRESS
+// CHANGE THIS TO THE DRONE MAC ADDRESS
 uint8_t drone_mac[ESP_NOW_ETH_ALEN] = { 0x02, 0x00, 0x00, 0x00, 0x00, 0x01 };
 
 static void espnow_send_cb(const esp_now_send_info_t *tx_info, esp_now_send_status_t status)
 {
-    // ESP_LOGD(TAG, "Send status: %s", status == ESP_NOW_SEND_SUCCESS ? "OK" : "FAIL");
+    //ESP_LOGD(TAG, "Send status: %s", status == ESP_NOW_SEND_SUCCESS ? "OK" : "FAIL");
 }
 
 /**
  * Initialize ESP-NOW protocol for communication with drone
  */
-void espnow_init(calibration_state *new_cs)
+void espnow_init()
 {
-    cs = *new_cs;
     ESP_ERROR_CHECK(nvs_flash_init());
     ESP_ERROR_CHECK(esp_netif_init());
     ESP_ERROR_CHECK(esp_event_loop_create_default());
@@ -52,10 +54,26 @@ void espnow_init(calibration_state *new_cs)
  * This creates a deadzone around the center position of the joystick.
  */
 float clamp(float value){
-    if(value > -0.1f && value < 0.1f){
+    if(value > -0.15f && value < 0.15f){
         return 0.f;        
+    }
+    else if(value < -1.0f){
+        return -1.0f;
     } 
+    else if(value > 1.0f){
+        return 1.0f;
+    }
     else return value;
+}
+
+float clamp_throttle(float value){
+    if(value < 0.15f && value > -0.8f){
+        value = 0.0f;
+    } 
+    else if(value > 1.0f){
+        value = 1.0f;
+    }
+    return value;
 }
 
 /**
@@ -68,15 +86,14 @@ void espnow_send_data(void *arg)
 
     while (1)
     {
-        msg.throttle = clamp(read_throttle() - cs.throttle); 
-        msg.roll  = clamp(read_roll() - cs.roll);
-        msg.pitch = clamp(read_pitch() - cs.pitch);
-        msg.yaw = clamp(read_yaw() - cs.yaw);
+        msg.throttle = clamp_throttle((read_throttle() - 0.5f) * GAIN); 
+        msg.roll     = 40.0f * clamp((read_roll()     - 0.5f) * GAIN);
+        msg.pitch    = 40.0f * clamp((read_pitch()    - 0.5f) * GAIN);
+        // msg.yaw      = 90.0f * clamp((read_yaw()      - 0.5f) * GAIN);
+        msg.yaw      = 0.0f; // Yaw control is not implemented in this example
         
         esp_now_send(drone_mac, (uint8_t *)&msg, sizeof(msg));
-
-        // ESP_LOGI(TAG, "Throttle: %.2f Roll: %.2f Pitch: %.2f", msg.throttle, msg.roll, msg.pitch);
-
+        ESP_LOGI(TAG, "[%lu] Throttle: %.3f Roll: %.3f Pitch: %.3f Yaw: %.3f", xTaskGetTickCount(), msg.throttle, msg.roll, msg.pitch, msg.yaw);
         vTaskDelay(pdMS_TO_TICKS(SEND_PERIOD_MS));
     }
 }

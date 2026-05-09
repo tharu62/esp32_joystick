@@ -15,13 +15,10 @@ void app_main(void)
 {
     ESP_LOGI(TAG, "ESP32-S3 Joystick Master started");
     
-    calibration_state cs;
-
     // adc_init_throttle(); // throttle only function used for testing only
     init_adc_all();
-    calibrate_adc(&cs);
-    espnow_init(&cs);
-    init_buttons_interrupts();
+    espnow_init();
+    // init_buttons_interrupts();
 
     xTaskCreate(
         espnow_send_data,
