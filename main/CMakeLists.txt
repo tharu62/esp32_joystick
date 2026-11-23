@@ -1,9 +1,10 @@
 idf_component_register(
     SRCS 
-    "esp32_joystick.c" 
+    "main.c" 
     "espnow.c" 
-    "thumbstick.c" 
+    "stick.c" 
     "buttons.c"
+    "rclink.c"
     INCLUDE_DIRS 
-    "C:/Users/Deshan/Documents/Code/Esp32/esp32_joystick/include"
+    "/home/tharu/Documents/Code/Esp32/esp32_joystick/include"
 )

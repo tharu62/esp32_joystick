@@ -13,13 +13,19 @@
 #include "esp_wifi.h"
 #include "esp_now.h"
 
-#include "thumbstick.h"
+#include "stick.h"
 #include "state.h"
 
+
 /**
- * Initialize ESP-NOW protocol for communication with drone
+ * Initialize ESP-NOW standard protocol for communication with drone
  */
-void espnow_init();
+void espnow_standard_init();
+
+/**
+ * Initialize ESP-NOW protocol with rclink for communication with drone
+ */
+void espnow_rclink_init();
 
 /**
  * Clamp small joystick values to zero to prevent drift due to noise.
@@ -32,3 +38,5 @@ float clamp(float value);
  * @todo adding button states to the message struct and sending them as well
  */
 void espnow_send_data(void *arg);
+
+void test_func(void *arg);

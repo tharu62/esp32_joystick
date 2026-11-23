@@ -15,20 +15,23 @@ extern float THROTTLE_ERROR;
 extern float ROLL_ERROR;
 extern float PITCH_ERROR;
 
+
 /**
- * Initialize ADC for throttle, AUXILIARY FUNCTION FOR ERROR CHECKING(GPIO10)
+ * Initialize ADC for throttle, auxiliary function for error checking (GPIO04)
  */
 void adc_init_throttle(void);
 
 /**
- * Initialize ADC for all channels (throttle, roll, pitch)
+ * Initialize ADC for all channels (throttle, roll, pitch, yaw)
  */
 void init_adc_all(void);
 
-float read_throttle(void);
+int read_throttle(void);
 
-float read_roll(void);
+int read_roll(void);
 
-float read_pitch(void);
+int read_pitch(void);
 
-float read_yaw();
+int read_yaw(void);
+
+uint16_t map_stick(int raw,int adc_min,int adc_max);
